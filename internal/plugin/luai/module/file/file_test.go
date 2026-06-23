@@ -14,7 +14,7 @@
  *    limitations under the License.
  */
 
-package fs
+package file
 
 import (
 	"os"
@@ -65,15 +65,15 @@ func assertNotExist(t *testing.T, path string) {
 
 func TestRequire(t *testing.T) {
 	runLua(t, t.TempDir(), `
-		local fs = require("fs")
-		assert(type(fs) == "table")
-		assert(type(fs.copy) == "function")
-		assert(type(fs.remove) == "function")
-		assert(type(fs.move) == "function")
-		assert(type(fs.symlink) == "function")
-		assert(fs.read == nil)
-		assert(fs.write == nil)
-		assert(pcall(require, "file") == false)
+		local file = require("file")
+		assert(type(file) == "table")
+		assert(type(file.copy) == "function")
+		assert(type(file.remove) == "function")
+		assert(type(file.move) == "function")
+		assert(type(file.symlink) == "function")
+		assert(file.read == nil)
+		assert(file.write == nil)
+		assert(pcall(require, "fs") == false)
 	`)
 }
 
@@ -83,7 +83,7 @@ func TestCopyFilePreservesContentAndMode(t *testing.T) {
 	destination := filepath.Join(root, "destination.txt")
 	writeFile(t, source, "vfox", 0o700)
 
-	runLua(t, root, `assert(require("fs").copy("source.txt", "destination.txt") == true)`)
+	runLua(t, root, `assert(require("file").copy("source.txt", "destination.txt") == true)`)
 
 	assertFileContent(t, destination, "vfox")
 	sourceInfo, err := os.Stat(source)
@@ -106,7 +106,7 @@ func TestCopyDirectoryRecursively(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	runLua(t, root, `assert(require("fs").copy("source", "destination") == true)`)
+	runLua(t, root, `assert(require("file").copy("source", "destination") == true)`)
 
 	assertFileContent(t, filepath.Join(root, "destination", "nested", "content.txt"), "nested")
 	if info, err := os.Stat(filepath.Join(root, "destination", "empty")); err != nil || !info.IsDir() {
@@ -119,7 +119,7 @@ func TestRemoveFile(t *testing.T) {
 	path := filepath.Join(root, "remove.txt")
 	writeFile(t, path, "remove", 0o600)
 
-	runLua(t, root, `assert(require("fs").remove("remove.txt") == true)`)
+	runLua(t, root, `assert(require("file").remove("remove.txt") == true)`)
 	assertNotExist(t, path)
 }
 
@@ -128,7 +128,7 @@ func TestRemoveDirectoryRecursively(t *testing.T) {
 	path := filepath.Join(root, "remove-dir")
 	writeFile(t, filepath.Join(path, "nested", "content.txt"), "remove", 0o600)
 
-	runLua(t, root, `assert(require("fs").remove("remove-dir") == true)`)
+	runLua(t, root, `assert(require("file").remove("remove-dir") == true)`)
 	assertNotExist(t, path)
 }
 
@@ -141,7 +141,7 @@ func TestRemoveDirectorySymlinkKeepsTarget(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	runLua(t, root, `assert(require("fs").remove("target-link") == true)`)
+	runLua(t, root, `assert(require("file").remove("target-link") == true)`)
 
 	assertNotExist(t, link)
 	assertFileContent(t, filepath.Join(target, "content.txt"), "keep")
@@ -151,7 +151,7 @@ func TestMoveRenamesFile(t *testing.T) {
 	root := t.TempDir()
 	writeFile(t, filepath.Join(root, "before.txt"), "rename", 0o600)
 
-	runLua(t, root, `assert(require("fs").move("before.txt", "after.txt") == true)`)
+	runLua(t, root, `assert(require("file").move("before.txt", "after.txt") == true)`)
 
 	assertNotExist(t, filepath.Join(root, "before.txt"))
 	assertFileContent(t, filepath.Join(root, "after.txt"), "rename")
@@ -161,7 +161,7 @@ func TestMoveRenamesDirectory(t *testing.T) {
 	root := t.TempDir()
 	writeFile(t, filepath.Join(root, "before", "nested", "content.txt"), "rename", 0o600)
 
-	runLua(t, root, `assert(require("fs").move("before", "after") == true)`)
+	runLua(t, root, `assert(require("file").move("before", "after") == true)`)
 
 	assertNotExist(t, filepath.Join(root, "before"))
 	assertFileContent(t, filepath.Join(root, "after", "nested", "content.txt"), "rename")
@@ -187,7 +187,7 @@ func TestMoveIntoExistingDirectory(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			runLua(t, root, `assert(require("fs").move("`+test.moveSource+`", "destination") == true)`)
+			runLua(t, root, `assert(require("file").move("`+test.moveSource+`", "destination") == true)`)
 
 			assertFileContent(t, filepath.Join(root, test.destination), test.content)
 		})
@@ -200,9 +200,9 @@ func TestSymlinkFileAndDirectory(t *testing.T) {
 	writeFile(t, filepath.Join(root, "target-dir", "content.txt"), "directory", 0o600)
 
 	runLua(t, root, `
-		local fs = require("fs")
-		assert(fs.symlink("target.txt", "file-link") == true)
-		assert(fs.symlink("target-dir", "dir-link") == true)
+		local file = require("file")
+		assert(file.symlink("target.txt", "file-link") == true)
+		assert(file.symlink("target-dir", "dir-link") == true)
 	`)
 
 	assertFileContent(t, filepath.Join(root, "file-link"), "file")
@@ -216,13 +216,13 @@ func TestOperationsReportErrors(t *testing.T) {
 	}
 
 	runLua(t, root, `
-		local fs = require("fs")
+		local file = require("file")
 		local cases = {
-			{fs.copy, "missing", "copy"},
-			{fs.copy, "already-exists", "missing/copy"},
-			{fs.remove, "missing"},
-			{fs.move, "missing", "move"},
-			{fs.symlink, "target", "already-exists"},
+			{file.copy, "missing", "copy"},
+			{file.copy, "already-exists", "missing/copy"},
+			{file.remove, "missing"},
+			{file.move, "missing", "move"},
+			{file.symlink, "target", "already-exists"},
 		}
 		for _, case in ipairs(cases) do
 			local ok, err = pcall(case[1], case[2], case[3])
@@ -238,7 +238,7 @@ func TestOperationsValidateArguments(t *testing.T) {
 	Preload(L, t.TempDir())
 
 	for _, operation := range []string{"copy", "remove", "move", "symlink"} {
-		err := L.DoString(`require("fs").` + operation + `(nil, "link")`)
+		err := L.DoString(`require("file").` + operation + `(nil, "link")`)
 		if err == nil {
 			t.Fatalf("%s() with a non-string path returned no error", operation)
 		}
@@ -247,7 +247,7 @@ func TestOperationsValidateArguments(t *testing.T) {
 		}
 	}
 	for _, operation := range []string{"copy", "move", "symlink"} {
-		err := L.DoString(`require("fs").` + operation + `("source", nil)`)
+		err := L.DoString(`require("file").` + operation + `("source", nil)`)
 		if err == nil || !strings.Contains(err.Error(), "string expected") {
 			t.Fatalf("%s() accepted a non-string destination: %v", operation, err)
 		}

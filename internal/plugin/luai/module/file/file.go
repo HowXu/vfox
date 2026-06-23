@@ -14,7 +14,7 @@
  *    limitations under the License.
  */
 
-package fs
+package file
 
 import (
 	"os"
@@ -106,5 +106,5 @@ func (f *Operation) loader(L *lua.LState) int {
 
 func Preload(L *lua.LState, rootPath string) {
 	operation := &Operation{rootPath: rootPath}
-	L.PreloadModule("fs", operation.loader)
+	L.PreloadModule("file", operation.loader)
 }
